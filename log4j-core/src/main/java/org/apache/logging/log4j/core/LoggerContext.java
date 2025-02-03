@@ -44,18 +44,24 @@ import org.apache.logging.log4j.core.config.Reconfigurable;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.jmx.Server;
 import org.apache.logging.log4j.core.util.Cancellable;
+import org.apache.logging.log4j.core.util.Constants;
 import org.apache.logging.log4j.core.util.ExecutorServices;
 import org.apache.logging.log4j.core.util.NetUtils;
 import org.apache.logging.log4j.core.util.ShutdownCallbackRegistry;
+import org.apache.logging.log4j.core.util.internal.InternalLoggerRegistry;
+import org.apache.logging.log4j.message.DefaultFlowMessageFactory;
+import org.apache.logging.log4j.message.FlowMessageFactory;
 import org.apache.logging.log4j.message.MessageFactory;
-import org.apache.logging.log4j.spi.AbstractLogger;
+import org.apache.logging.log4j.message.ParameterizedMessageFactory;
+import org.apache.logging.log4j.message.ReusableMessageFactory;
 import org.apache.logging.log4j.spi.LoggerContextFactory;
 import org.apache.logging.log4j.spi.LoggerContextShutdownAware;
 import org.apache.logging.log4j.spi.LoggerContextShutdownEnabled;
-import org.apache.logging.log4j.spi.LoggerRegistry;
 import org.apache.logging.log4j.spi.Terminable;
 import org.apache.logging.log4j.spi.ThreadContextMapFactory;
+import org.apache.logging.log4j.util.LoaderUtil;
 import org.apache.logging.log4j.util.PropertiesUtil;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The LoggerContext is the anchor for the logging system. It maintains a list of all the loggers requested by
@@ -74,9 +80,48 @@ public class LoggerContext extends AbstractLifeCycle
      */
     public static final String PROPERTY_CONFIG = "config";
 
+    private static final String EXTERNAL_CONTEXT_KEY = "__EXTERNAL_CONTEXT_KEY__";
+
+    private static final String MESSAGE_FACTORY_PROPERTY_NAME = "log4j2.messageFactory";
+    /**
+     * The default message factory to use while creating loggers if the user provides none.
+     * <p>
+     *     To mitigate initialization problems as the one described in
+     *     <a href="https://github.com/apache/logging-log4j2/issues/3252>#3252</a>,
+     *     this field should be initialized as soon as possible.
+     * </p>
+     */
+    private static final MessageFactory DEFAULT_MESSAGE_FACTORY = createInstanceFromFactoryProperty(
+            MessageFactory.class,
+            MESSAGE_FACTORY_PROPERTY_NAME,
+            Constants.ENABLE_THREADLOCALS ? ReusableMessageFactory.INSTANCE : ParameterizedMessageFactory.INSTANCE);
+
+    private static final String FLOW_MESSAGE_FACTORY_PROPERTY_NAME = "log4j2.flowMessageFactory";
+    /**
+     * The default flow message factory to use while creating loggers.
+     * <p>
+     *     To mitigate initialization problems as the one described in
+     *     <a href="https://github.com/apache/logging-log4j2/issues/3252>#3252</a>,
+     *     this field should be initialized as soon as possible.
+     * </p>
+     */
+    static final FlowMessageFactory DEFAULT_FLOW_MESSAGE_FACTORY = createInstanceFromFactoryProperty(
+            FlowMessageFactory.class, FLOW_MESSAGE_FACTORY_PROPERTY_NAME, DefaultFlowMessageFactory.INSTANCE);
+
     private static final Configuration NULL_CONFIGURATION = new NullConfiguration();
 
-    private final LoggerRegistry<Logger> loggerRegistry = new LoggerRegistry<>();
+    private static <V> V createInstanceFromFactoryProperty(
+            final Class<V> instanceType, final String propertyName, final V fallbackInstance) {
+        try {
+            return LoaderUtil.newCheckedInstanceOfProperty(propertyName, instanceType, () -> fallbackInstance);
+        } catch (final Exception error) {
+            final String message =
+                    String.format("failed instantiating the class pointed by the `%s` property", propertyName);
+            throw new RuntimeException(message, error);
+        }
+    }
+
+    private final InternalLoggerRegistry loggerRegistry = new InternalLoggerRegistry();
     private final CopyOnWriteArrayList<PropertyChangeListener> propertyChangeListeners = new CopyOnWriteArrayList<>();
     private volatile List<LoggerContextShutdownAware> listeners;
 
@@ -86,8 +131,7 @@ public class LoggerContext extends AbstractLifeCycle
      */
     private volatile Configuration configuration = new DefaultConfiguration();
 
-    private static final String EXTERNAL_CONTEXT_KEY = "__EXTERNAL_CONTEXT_KEY__";
-    private ConcurrentMap<String, Object> externalMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Object> externalMap = new ConcurrentHashMap<>();
     private String contextName;
     private volatile URI configLocation;
     private Cancellable shutdownCallback;
@@ -122,9 +166,7 @@ public class LoggerContext extends AbstractLifeCycle
      */
     public LoggerContext(final String name, final Object externalContext, final URI configLocn) {
         this.contextName = name;
-        if (externalContext == null) {
-            externalMap.remove(EXTERNAL_CONTEXT_KEY);
-        } else {
+        if (externalContext != null) {
             externalMap.put(EXTERNAL_CONTEXT_KEY, externalContext);
         }
         this.configLocation = configLocn;
@@ -143,9 +185,7 @@ public class LoggerContext extends AbstractLifeCycle
             justification = "The configLocn comes from a secure source (Log4j properties)")
     public LoggerContext(final String name, final Object externalContext, final String configLocn) {
         this.contextName = name;
-        if (externalContext == null) {
-            externalMap.remove(EXTERNAL_CONTEXT_KEY);
-        } else {
+        if (externalContext != null) {
             externalMap.put(EXTERNAL_CONTEXT_KEY, externalContext);
         }
         if (configLocn != null) {
@@ -166,7 +206,7 @@ public class LoggerContext extends AbstractLifeCycle
         if (listeners == null) {
             synchronized (this) {
                 if (listeners == null) {
-                    listeners = new CopyOnWriteArrayList<LoggerContextShutdownAware>();
+                    listeners = new CopyOnWriteArrayList<>();
                 }
             }
         }
@@ -277,7 +317,7 @@ public class LoggerContext extends AbstractLifeCycle
      * @param config The new Configuration.
      */
     public void start(final Configuration config) {
-        LOGGER.debug("Starting LoggerContext[name={}, {}] with configuration {}...", getName(), this, config);
+        LOGGER.info("Starting {}[name={}] with configuration {}...", getClass().getSimpleName(), getName(), config);
         if (configLock.tryLock()) {
             try {
                 if (this.isInitialized() || this.isStopped()) {
@@ -291,7 +331,7 @@ public class LoggerContext extends AbstractLifeCycle
             }
         }
         setConfiguration(config);
-        LOGGER.debug("LoggerContext[name={}, {}] started OK with configuration {}.", getName(), this, config);
+        LOGGER.info("{}[name={}] started with configuration {}.", getClass().getSimpleName(), getName(), config);
     }
 
     private void setUpShutdownHook() {
@@ -306,7 +346,6 @@ public class LoggerContext extends AbstractLifeCycle
                     this.shutdownCallback = ((ShutdownCallbackRegistry) factory).addShutdownCallback(new Runnable() {
                         @Override
                         public void run() {
-                            @SuppressWarnings("resource")
                             final LoggerContext context = LoggerContext.this;
                             LOGGER.debug(
                                     SHUTDOWN_HOOK_MARKER,
@@ -498,7 +537,7 @@ public class LoggerContext extends AbstractLifeCycle
      */
     @Override
     public Logger getLogger(final String name) {
-        return getLogger(name, null);
+        return getLogger(name, DEFAULT_MESSAGE_FACTORY);
     }
 
     /**
@@ -515,25 +554,17 @@ public class LoggerContext extends AbstractLifeCycle
     }
 
     /**
-     * Obtains a Logger from the Context.
+     * Obtains a logger from the context.
      *
-     * @param name The name of the Logger to return.
-     * @param messageFactory The message factory is used only when creating a logger, subsequent use does not change the
-     *            logger but will log a warning if mismatched.
-     * @return The Logger.
+     * @param name a logger name
+     * @param messageFactory a message factory to associate the logger with
+     * @return a logger matching the given name and message factory
      */
     @Override
-    public Logger getLogger(final String name, final MessageFactory messageFactory) {
-        // Note: This is the only method where we add entries to the 'loggerRegistry' ivar.
-        Logger logger = loggerRegistry.getLogger(name, messageFactory);
-        if (logger != null) {
-            AbstractLogger.checkMessageFactory(logger, messageFactory);
-            return logger;
-        }
-
-        logger = newInstance(this, name, messageFactory);
-        loggerRegistry.putIfAbsent(name, messageFactory, logger);
-        return loggerRegistry.getLogger(name, messageFactory);
+    public Logger getLogger(final String name, @Nullable final MessageFactory messageFactory) {
+        final MessageFactory effectiveMessageFactory =
+                messageFactory != null ? messageFactory : DEFAULT_MESSAGE_FACTORY;
+        return loggerRegistry.computeIfAbsent(name, effectiveMessageFactory, this::newInstance);
     }
 
     /**
@@ -541,9 +572,14 @@ public class LoggerContext extends AbstractLifeCycle
      *
      * @return the LoggerRegistry.
      * @since 2.17.2
+     * @deprecated since 2.25.0 without a replacement.
      */
-    public LoggerRegistry<Logger> getLoggerRegistry() {
-        return loggerRegistry;
+    @Deprecated
+    public org.apache.logging.log4j.spi.LoggerRegistry<Logger> getLoggerRegistry() {
+        org.apache.logging.log4j.spi.LoggerRegistry<Logger> result =
+                new org.apache.logging.log4j.spi.LoggerRegistry<>();
+        loggerRegistry.getLoggers().forEach(l -> result.putIfAbsent(l.getName(), l.getMessageFactory(), l));
+        return result;
     }
 
     /**
@@ -554,7 +590,7 @@ public class LoggerContext extends AbstractLifeCycle
      */
     @Override
     public boolean hasLogger(final String name) {
-        return loggerRegistry.hasLogger(name);
+        return loggerRegistry.hasLogger(name, DEFAULT_MESSAGE_FACTORY);
     }
 
     /**
@@ -564,8 +600,10 @@ public class LoggerContext extends AbstractLifeCycle
      * @return True if the Logger exists, false otherwise.
      */
     @Override
-    public boolean hasLogger(final String name, final MessageFactory messageFactory) {
-        return loggerRegistry.hasLogger(name, messageFactory);
+    public boolean hasLogger(final String name, @Nullable final MessageFactory messageFactory) {
+        final MessageFactory effectiveMessageFactory =
+                messageFactory != null ? messageFactory : DEFAULT_MESSAGE_FACTORY;
+        return loggerRegistry.hasLogger(name, effectiveMessageFactory);
     }
 
     /**
@@ -708,7 +746,7 @@ public class LoggerContext extends AbstractLifeCycle
      */
     private void reconfigure(final URI configURI) {
         final Object externalContext = externalMap.get(EXTERNAL_CONTEXT_KEY);
-        final ClassLoader cl = ClassLoader.class.isInstance(externalContext) ? (ClassLoader) externalContext : null;
+        final ClassLoader cl = externalContext instanceof ClassLoader ? (ClassLoader) externalContext : null;
         LOGGER.debug(
                 "Reconfiguration started for context[name={}] at URI {} ({}) with optional ClassLoader: {}",
                 contextName,
@@ -774,9 +812,7 @@ public class LoggerContext extends AbstractLifeCycle
      */
     public void updateLoggers(final Configuration config) {
         final Configuration old = this.configuration;
-        for (final Logger logger : loggerRegistry.getLoggers()) {
-            logger.updateConfiguration(config);
-        }
+        loggerRegistry.getLoggers().forEach(logger -> logger.updateConfiguration(config));
         firePropertyChangeEvent(new PropertyChangeEvent(this, PROPERTY_CONFIG, old, config));
     }
 
@@ -812,8 +848,19 @@ public class LoggerContext extends AbstractLifeCycle
                 .init(); // Or make public and call ThreadContext.init() which calls ThreadContextMapFactory.init().
     }
 
-    // LOG4J2-151: changed visibility from private to protected
-    protected Logger newInstance(final LoggerContext ctx, final String name, final MessageFactory messageFactory) {
-        return new Logger(ctx, name, messageFactory);
+    private Logger newInstance(final String name, final MessageFactory messageFactory) {
+        return newInstance(this, name, messageFactory);
+    }
+
+    /**
+     * Callback to create a new logger.
+     *
+     * @param context The {@link LoggerContext} this logger is associated with, never {@code null}.
+     * @param messageFactory The message factory to be used, never {@code null}.
+     * @param name The logger name, never {@code null}.
+     * @return A new logger instance.
+     */
+    protected Logger newInstance(LoggerContext context, String name, MessageFactory messageFactory) {
+        return new Logger(context, name, messageFactory);
     }
 }

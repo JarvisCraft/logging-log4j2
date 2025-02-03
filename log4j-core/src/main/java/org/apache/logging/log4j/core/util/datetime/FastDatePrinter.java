@@ -78,7 +78,9 @@ import org.apache.logging.log4j.core.util.Throwables;
  * </p>
  *
  * @since Apache Commons Lang 3.2
+ * @deprecated Starting with version {@code 2.25.0}, this class is assumed to be internal and planned to be removed in the next major release.
  */
+@Deprecated
 public class FastDatePrinter implements DatePrinter, Serializable {
     // A lot of the speed in this class comes from caching, but some comes
     // from the special int to StringBuffer conversion.
@@ -457,7 +459,7 @@ public class FastDatePrinter implements DatePrinter, Serializable {
     }
 
     /**
-     * Creation method for new calender instances.
+     * Creation method for new calendar instances.
      * @return a new Calendar instance.
      */
     private Calendar newCalendar() {

@@ -16,17 +16,22 @@
  */
 package org.apache.logging.log4j.core.appender.db.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.test.appender.db.jdbc.JdbcH2TestHelper;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class PoolingDriverConnectionSourceTest {
+/**
+ * Tests {@link PoolingDriverConnectionSource}.
+ */
+class PoolingDriverConnectionSourceTest {
 
     @Test
-    public void testH2Properties() throws SQLException {
+    void testH2Properties() throws SQLException {
         final Property[] properties = new Property[] {
             // @formatter:off
             Property.createProperty("username", JdbcH2TestHelper.USER_NAME),
@@ -44,7 +49,7 @@ public class PoolingDriverConnectionSourceTest {
     }
 
     @Test
-    public void testH2PropertiesAndPoolName() throws SQLException {
+    void testH2PropertiesAndPoolName() throws SQLException {
         final Property[] properties = new Property[] {
             // @formatter:off
             Property.createProperty("username", JdbcH2TestHelper.USER_NAME),
@@ -62,7 +67,7 @@ public class PoolingDriverConnectionSourceTest {
     }
 
     @Test
-    public void testH2UserAndPassword() throws SQLException {
+    void testH2UserAndPassword() throws SQLException {
         // @formatter:off
         final PoolingDriverConnectionSource source =
                 PoolingDriverConnectionSource.newPoolingDriverConnectionSourceBuilder()
@@ -75,16 +80,16 @@ public class PoolingDriverConnectionSourceTest {
     }
 
     private void openAndClose(final PoolingDriverConnectionSource source) throws SQLException {
-        Assert.assertNotNull("PoolingDriverConnectionSource is null", source);
+        assertNotNull(source, "PoolingDriverConnectionSource is null");
         try (final Connection conn = source.getConnection()) {
-            Assert.assertFalse(conn.isClosed());
+            assertFalse(conn.isClosed());
         } finally {
             source.stop();
         }
     }
 
     @Test
-    public void testH2UserPasswordAndPoolName() throws SQLException {
+    void testH2UserPasswordAndPoolName() throws SQLException {
         // @formatter:off
         final PoolingDriverConnectionSource source =
                 PoolingDriverConnectionSource.newPoolingDriverConnectionSourceBuilder()
@@ -98,7 +103,7 @@ public class PoolingDriverConnectionSourceTest {
     }
 
     @Test
-    public void testPoolableConnectionFactoryConfig() throws SQLException {
+    void testPoolableConnectionFactoryConfig() throws SQLException {
         final PoolableConnectionFactoryConfig poolableConnectionFactoryConfig =
                 PoolableConnectionFactoryConfig.newBuilder()
                         .setMaxConnLifetimeMillis(30000)

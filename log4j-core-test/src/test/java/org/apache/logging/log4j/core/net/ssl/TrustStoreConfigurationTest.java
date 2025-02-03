@@ -21,56 +21,65 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.security.KeyStore;
+import org.apache.logging.log4j.test.junit.UsingStatusListener;
 import org.junit.jupiter.api.Test;
 
-public class TrustStoreConfigurationTest {
+// Suppresses `StatusLogger` output, unless there is a failure
+@UsingStatusListener
+class TrustStoreConfigurationTest {
     @SuppressWarnings("deprecation")
     @Test
-    public void loadEmptyConfigurationDeprecated() {
+    void loadEmptyConfigurationDeprecated() {
         assertThrows(
                 StoreConfigurationException.class,
-                () -> new TrustStoreConfiguration(null, TestConstants.NULL_PWD, null, null));
+                () -> new TrustStoreConfiguration(null, SslKeyStoreConstants.NULL_PWD, null, null));
     }
 
     @Test
-    public void loadEmptyConfiguration() {
+    void loadEmptyConfiguration() {
         assertThrows(
                 StoreConfigurationException.class,
                 () -> new TrustStoreConfiguration(
-                        null, new MemoryPasswordProvider(TestConstants.NULL_PWD), null, null));
+                        null, new MemoryPasswordProvider(SslKeyStoreConstants.NULL_PWD), null, null));
     }
 
     @Test
-    public void loadConfigurationDeprecated() throws StoreConfigurationException {
+    void loadConfigurationDeprecated() throws StoreConfigurationException {
         @SuppressWarnings("deprecation")
-        final TrustStoreConfiguration ksc =
-                new TrustStoreConfiguration(TestConstants.TRUSTSTORE_FILE, TestConstants.TRUSTSTORE_PWD(), null, null);
-        final KeyStore ks = ksc.getKeyStore();
-        assertNotNull(ks);
-    }
-
-    @Test
-    public void loadConfiguration() throws StoreConfigurationException {
         final TrustStoreConfiguration ksc = new TrustStoreConfiguration(
-                TestConstants.TRUSTSTORE_FILE, new MemoryPasswordProvider(TestConstants.TRUSTSTORE_PWD()), null, null);
+                SslKeyStoreConstants.TRUSTSTORE_LOCATION, SslKeyStoreConstants.TRUSTSTORE_PWD(), null, null);
         final KeyStore ks = ksc.getKeyStore();
         assertNotNull(ks);
     }
 
     @Test
-    public void returnTheSameKeyStoreAfterMultipleLoadsDeprecated() throws StoreConfigurationException {
+    void loadConfiguration() throws StoreConfigurationException {
+        final TrustStoreConfiguration ksc = new TrustStoreConfiguration(
+                SslKeyStoreConstants.TRUSTSTORE_LOCATION,
+                new MemoryPasswordProvider(SslKeyStoreConstants.TRUSTSTORE_PWD()),
+                null,
+                null);
+        final KeyStore ks = ksc.getKeyStore();
+        assertNotNull(ks);
+    }
+
+    @Test
+    void returnTheSameKeyStoreAfterMultipleLoadsDeprecated() throws StoreConfigurationException {
         @SuppressWarnings("deprecation")
-        final TrustStoreConfiguration ksc =
-                new TrustStoreConfiguration(TestConstants.TRUSTSTORE_FILE, TestConstants.TRUSTSTORE_PWD(), null, null);
+        final TrustStoreConfiguration ksc = new TrustStoreConfiguration(
+                SslKeyStoreConstants.TRUSTSTORE_LOCATION, SslKeyStoreConstants.TRUSTSTORE_PWD(), null, null);
         final KeyStore ks = ksc.getKeyStore();
         final KeyStore ks2 = ksc.getKeyStore();
         assertSame(ks, ks2);
     }
 
     @Test
-    public void returnTheSameKeyStoreAfterMultipleLoads() throws StoreConfigurationException {
+    void returnTheSameKeyStoreAfterMultipleLoads() throws StoreConfigurationException {
         final TrustStoreConfiguration ksc = new TrustStoreConfiguration(
-                TestConstants.TRUSTSTORE_FILE, new MemoryPasswordProvider(TestConstants.TRUSTSTORE_PWD()), null, null);
+                SslKeyStoreConstants.TRUSTSTORE_LOCATION,
+                new MemoryPasswordProvider(SslKeyStoreConstants.TRUSTSTORE_PWD()),
+                null,
+                null);
         final KeyStore ks = ksc.getKeyStore();
         final KeyStore ks2 = ksc.getKeyStore();
         assertSame(ks, ks2);
@@ -78,19 +87,19 @@ public class TrustStoreConfigurationTest {
 
     @SuppressWarnings("deprecation")
     @Test
-    public void wrongPasswordDeprecated() {
+    void wrongPasswordDeprecated() {
         assertThrows(
                 StoreConfigurationException.class,
                 () -> new TrustStoreConfiguration(
-                        TestConstants.TRUSTSTORE_FILE, "wrongPassword!".toCharArray(), null, null));
+                        SslKeyStoreConstants.TRUSTSTORE_LOCATION, "wrongPassword!".toCharArray(), null, null));
     }
 
     @Test
-    public void wrongPassword() {
+    void wrongPassword() {
         assertThrows(
                 StoreConfigurationException.class,
                 () -> new TrustStoreConfiguration(
-                        TestConstants.TRUSTSTORE_FILE,
+                        SslKeyStoreConstants.TRUSTSTORE_LOCATION,
                         new MemoryPasswordProvider("wrongPassword!".toCharArray()),
                         null,
                         null));

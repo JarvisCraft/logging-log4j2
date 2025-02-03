@@ -28,14 +28,19 @@
   <name>Apache Log4j Tag Library</name>
   <description>The Apache Log4j Tag Library for Web Applications</description>
   <properties>
-
     <!--
       ~ OSGi and JPMS options
       -->
+    <bnd-extra-package-options>
+      <!-- Annotations only -->
+      org.jspecify.*;resolution:=optional
+    </bnd-extra-package-options>
     <bnd-extra-module-options>
       <!-- Filebased module names: MUST be static -->
       javax.servlet.api;substitute="javax.servlet-api";static=true;transitive=false,
-      javax.servlet.jsp.api;substitute="javax.servlet.jsp-api";static=true;transitive=false
+      javax.servlet.jsp.api;substitute="javax.servlet.jsp-api";static=true;transitive=false,
+      <!-- Remove `transitive` for optional dependencies -->
+      org.jspecify;transitive=false
     </bnd-extra-module-options>
     <Fragment-Host>org.apache.logging.log4j.core</Fragment-Host>
   </properties>
@@ -60,6 +65,11 @@
       <optional>true</optional>
     </dependency>
     <dependency>
+      <groupId>org.jspecify</groupId>
+      <artifactId>jspecify</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
       <scope>test</scope>
@@ -77,11 +87,6 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.vintage</groupId>
-      <artifactId>junit-vintage-engine</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

@@ -16,13 +16,13 @@
  */
 package org.apache.logging.log4j.jpl;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.lang.System.Logger;
 import java.util.List;
@@ -30,19 +30,19 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.test.appender.ListAppender;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class Log4jSystemLoggerTest {
+class Log4jSystemLoggerTest {
 
     public static final String LOGGER_NAME = "Test";
     protected Logger logger;
     protected ListAppender eventAppender;
     protected ListAppender stringAppender;
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeEach
+    void setUp() {
         logger = System.getLogger(LOGGER_NAME);
         assertThat(logger, instanceOf(Log4jSystemLogger.class));
         eventAppender = ListAppender.getListAppender("TestAppender");
@@ -51,8 +51,8 @@ public class Log4jSystemLoggerTest {
         assertNotNull(stringAppender);
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @AfterEach
+    void tearDown() {
         if (eventAppender != null) {
             eventAppender.clear();
         }
@@ -62,17 +62,17 @@ public class Log4jSystemLoggerTest {
     }
 
     @Test
-    public void testGetName() throws Exception {
+    void testGetName() {
         assertThat(logger.getName(), equalTo(LOGGER_NAME));
     }
 
     @Test
-    public void testIsLoggable() throws Exception {
+    void testIsLoggable() {
         assertThat(logger.isLoggable(Logger.Level.ERROR), equalTo(true));
     }
 
     @Test
-    public void testLog() throws Exception {
+    void testLog() {
         logger.log(Logger.Level.INFO, "Informative message here.");
         final List<LogEvent> events = eventAppender.getEvents();
         assertThat(events, hasSize(1));
@@ -85,7 +85,7 @@ public class Log4jSystemLoggerTest {
     }
 
     @Test
-    public void testParameterizedLogging() {
+    void testParameterizedLogging() {
         logger.log(Logger.Level.INFO, "Hello, {0}!", "World");
         final List<LogEvent> events = eventAppender.getEvents();
         assertThat(events, hasSize(1));
@@ -98,7 +98,7 @@ public class Log4jSystemLoggerTest {
     }
 
     @Test
-    public void testParameterizedLoggingWithThrowable() {
+    void testParameterizedLoggingWithThrowable() {
         final Throwable throwable = new RuntimeException();
         logger.log(Logger.Level.INFO, "Hello, {0}!", "World", throwable);
         final List<LogEvent> events = eventAppender.getEvents();
@@ -113,7 +113,7 @@ public class Log4jSystemLoggerTest {
     }
 
     @Test
-    public void testLogWithCallingClass() throws Exception {
+    void testLogWithCallingClass() {
         final Logger log = System.getLogger("Test.CallerClass");
         log.log(Logger.Level.INFO, "Calling from LoggerTest");
         final List<String> messages = stringAppender.getMessages();
@@ -123,17 +123,17 @@ public class Log4jSystemLoggerTest {
     }
 
     @Test
-    public void testCurlyBraces() {
+    void testCurlyBraces() {
         testMessage("{message}");
     }
 
     @Test
-    public void testPercent() {
+    void testPercent() {
         testMessage("message%s");
     }
 
     @Test
-    public void testPercentAndCurlyBraces() {
+    void testPercentAndCurlyBraces() {
         testMessage("message{%s}");
     }
 

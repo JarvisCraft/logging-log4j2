@@ -16,7 +16,6 @@
  */
 package org.apache.logging.log4j.message;
 
-import aQute.bnd.annotation.baseline.BaselineIgnore;
 import com.google.errorprone.annotations.InlineMe;
 import java.io.Serializable;
 import org.apache.logging.log4j.util.StringBuilderFormattable;
@@ -47,6 +46,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
 
     /**
      * Reserved enterprise number.
+     * @since 2.18.0
      */
     public static final String RESERVED = "-1";
 
@@ -62,7 +62,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
     /**
      * Creates a StructuredDataId based on the name.
      * @param name The Structured Data Element name (maximum length is 32)
-     * @since 2.9
+     * @since 2.9.0
      */
     public StructuredDataId(final String name) {
         this(name, null, null, MAX_LENGTH);
@@ -72,7 +72,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * Creates a StructuredDataId based on the name.
      * @param name The Structured Data Element name.
      * @param maxLength The maximum length of the name.
-     * @since 2.9
+     * @since 2.9.0
      */
     public StructuredDataId(final String name, final int maxLength) {
         this(name, null, null, maxLength);
@@ -95,7 +95,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * @param required The list of keys that are required for this id.
      * @param optional The list of keys that are optional for this id.
      * @param maxLength The maximum length of the id's name.
-     * @since 2.9
+     * @since 2.9.0
      */
     public StructuredDataId(final String name, final String[] required, final String[] optional, int maxLength) {
         int index = -1;
@@ -128,6 +128,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * @param enterpriseNumber The enterprise number.
      * @param required The list of keys that are required for this id.
      * @param optional The list of keys that are optional for this id.
+     * @since 2.18.0
      */
     public StructuredDataId(
             final String name, final String enterpriseNumber, final String[] required, final String[] optional) {
@@ -141,7 +142,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * @param enterpriseNumber The enterprise number.
      * @param required The list of keys that are required for this id.
      * @param optional The list of keys that are optional for this id.
-     * @deprecated Use {@link #StructuredDataId(String, String, String[], String[])} instead.
+     * @deprecated Since 2.18.0, use {@link #StructuredDataId(String, String, String[], String[])} instead.
      */
     @Deprecated
     @InlineMe(replacement = "this(name, String.valueOf(enterpriseNumber), required, optional)")
@@ -158,7 +159,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * @param required The list of keys that are required for this id.
      * @param optional The list of keys that are optional for this id.
      * @param maxLength The maximum length of the StructuredData Id key.
-     * @since 2.9
+     * @since 2.18.0
      */
     public StructuredDataId(
             final String name,
@@ -193,8 +194,8 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * @param required The list of keys that are required for this id.
      * @param optional The list of keys that are optional for this id.
      * @param maxLength The maximum length of the StructuredData Id key.
-     * @since 2.9
-     * @deprecated Use {@link #StructuredDataId(String, String, String[], String[], int)} instead.
+     * @since 2.9.0
+     * @deprecated Since 2.18.0, use {@link #StructuredDataId(String, String, String[], String[], int)} instead.
      */
     @InlineMe(replacement = "this(name, String.valueOf(enterpriseNumber), required, optional, maxLength)")
     @Deprecated
@@ -226,6 +227,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * @param defaultId The default id to use if this StructuredDataId doesn't have a name.
      * @param anEnterpriseNumber The enterprise number.
      * @return a StructuredDataId.
+     * @since 2.18.0
      */
     public StructuredDataId makeId(final String defaultId, final String anEnterpriseNumber) {
         String id;
@@ -253,11 +255,10 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * @param defaultId The default id to use if this StructuredDataId doesn't have a name.
      * @param anEnterpriseNumber The enterprise number.
      * @return a StructuredDataId.
-     * @deprecated Use {@link StructuredDataId#makeId(String, String)} instead
+     * @deprecated Since 2.18.0, use {@link StructuredDataId#makeId(String, String)} instead
      */
     @Deprecated
     // This method should have been `final` from the start, we don't expect anyone to override it.
-    @BaselineIgnore("2.22.0")
     @InlineMe(replacement = "this.makeId(defaultId, String.valueOf(anEnterpriseNumber))")
     public final StructuredDataId makeId(final String defaultId, final int anEnterpriseNumber) {
         return makeId(defaultId, String.valueOf(anEnterpriseNumber));
@@ -294,6 +295,7 @@ public class StructuredDataId implements Serializable, StringBuilderFormattable 
      * Returns the enterprise number.
      *
      * @return the enterprise number.
+     * @since 2.18.0
      */
     public String getEnterpriseNumber() {
         return enterpriseNumber;

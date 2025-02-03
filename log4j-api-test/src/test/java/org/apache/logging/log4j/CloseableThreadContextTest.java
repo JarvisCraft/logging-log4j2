@@ -19,7 +19,9 @@ package org.apache.logging.log4j;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +38,7 @@ import org.junit.jupiter.api.parallel.Resources;
  * @since 2.6
  */
 @ResourceLock(value = Resources.SYSTEM_PROPERTIES, mode = ResourceAccessMode.READ)
-public class CloseableThreadContextTest {
+class CloseableThreadContextTest {
 
     private final String key = "key";
     private final String value = "value";
@@ -48,7 +50,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldAddAnEntryToTheMap() {
+    void shouldAddAnEntryToTheMap() {
         try (final CloseableThreadContext.Instance ignored = CloseableThreadContext.put(key, value)) {
             assertNotNull(ignored);
             assertEquals(value, ThreadContext.get(key));
@@ -56,7 +58,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldAddTwoEntriesToTheMap() {
+    void shouldAddTwoEntriesToTheMap() {
         final String key2 = "key2";
         final String value2 = "value2";
         try (final CloseableThreadContext.Instance ignored =
@@ -68,7 +70,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldNestEntries() {
+    void shouldNestEntries() {
         final String oldValue = "oldValue";
         final String innerValue = "innerValue";
         ThreadContext.put(key, oldValue);
@@ -85,7 +87,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldPreserveOldEntriesFromTheMapWhenAutoClosed() {
+    void shouldPreserveOldEntriesFromTheMapWhenAutoClosed() {
         final String oldValue = "oldValue";
         ThreadContext.put(key, oldValue);
         try (final CloseableThreadContext.Instance ignored = CloseableThreadContext.put(key, value)) {
@@ -96,7 +98,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void ifTheSameKeyIsAddedTwiceTheOriginalShouldBeUsed() {
+    void ifTheSameKeyIsAddedTwiceTheOriginalShouldBeUsed() {
         final String oldValue = "oldValue";
         final String secondValue = "innerValue";
         ThreadContext.put(key, oldValue);
@@ -109,7 +111,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldPushAndPopAnEntryToTheStack() {
+    void shouldPushAndPopAnEntryToTheStack() {
         final String message = "message";
         try (final CloseableThreadContext.Instance ignored = CloseableThreadContext.push(message)) {
             assertNotNull(ignored);
@@ -119,7 +121,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldPushAndPopTwoEntriesToTheStack() {
+    void shouldPushAndPopTwoEntriesToTheStack() {
         final String message1 = "message1";
         final String message2 = "message2";
         try (final CloseableThreadContext.Instance ignored =
@@ -131,7 +133,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldPushAndPopAParameterizedEntryToTheStack() {
+    void shouldPushAndPopAParameterizedEntryToTheStack() {
         final String parameterizedMessage = "message {}";
         final String parameterizedMessageParameter = "param";
         final String formattedMessage = parameterizedMessage.replace("{}", parameterizedMessageParameter);
@@ -144,7 +146,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldRemoveAnEntryFromTheMapWhenAutoClosed() {
+    void shouldRemoveAnEntryFromTheMapWhenAutoClosed() {
         try (final CloseableThreadContext.Instance ignored = CloseableThreadContext.put(key, value)) {
             assertNotNull(ignored);
             assertEquals(value, ThreadContext.get(key));
@@ -153,7 +155,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void shouldAddEntriesToBothStackAndMap() {
+    void shouldAddEntriesToBothStackAndMap() {
         final String stackValue = "something";
         try (final CloseableThreadContext.Instance ignored =
                 CloseableThreadContext.put(key, value).push(stackValue)) {
@@ -166,7 +168,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void canReuseCloseableThreadContext() {
+    void canReuseCloseableThreadContext() {
         final String stackValue = "something";
         // Create a ctc and close it
         final CloseableThreadContext.Instance ctc =
@@ -193,7 +195,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void closeIsIdempotent() {
+    void closeIsIdempotent() {
 
         final String originalMapValue = "map to keep";
         final String originalStackValue = "stack to keep";
@@ -216,7 +218,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void putAllWillPutAllValues() {
+    void putAllWillPutAllValues() {
 
         final String oldValue = "oldValue";
         ThreadContext.put(key, oldValue);
@@ -232,7 +234,7 @@ public class CloseableThreadContextTest {
     }
 
     @Test
-    public void pushAllWillPushAllValues() {
+    void pushAllWillPushAllValues() {
 
         ThreadContext.push(key);
         final List<String> messages = ThreadContext.getImmutableStack().asList();
@@ -243,5 +245,71 @@ public class CloseableThreadContextTest {
             assertEquals(key, ThreadContext.peek());
         }
         assertEquals("", ThreadContext.peek());
+    }
+
+    /**
+     * User provided test stressing nesting using {@link CloseableThreadContext#put(String, String)}.
+     *
+     * @see <a href="https://github.com/apache/logging-log4j2/issues/2946#issuecomment-2382935426">#2946</a>
+     */
+    @Test
+    void testAutoCloseableThreadContextPut() {
+        try (final CloseableThreadContext.Instance ctc1 = CloseableThreadContext.put("outer", "one")) {
+            try (final CloseableThreadContext.Instance ctc2 = CloseableThreadContext.put("outer", "two")) {
+                assertEquals("two", ThreadContext.get("outer"));
+
+                try (final CloseableThreadContext.Instance ctc3 = CloseableThreadContext.put("inner", "one")) {
+                    assertEquals("one", ThreadContext.get("inner"));
+
+                    ThreadContext.put(
+                            "not-in-closeable", "true"); // Remove this line, and closing context behaves as expected
+                    assertEquals("two", ThreadContext.get("outer"));
+                }
+
+                assertEquals("two", ThreadContext.get("outer"));
+                assertNull(ThreadContext.get("inner")); // Test fails here
+            }
+
+            assertEquals("one", ThreadContext.get("outer"));
+            assertNull(ThreadContext.get("inner"));
+        }
+        assertEquals("true", ThreadContext.get("not-in-closeable"));
+
+        assertNull(ThreadContext.get("inner"));
+        assertNull(ThreadContext.get("outer"));
+    }
+
+    /**
+     * User provided test stressing nesting using {@link CloseableThreadContext#putAll(Map)}.
+     *
+     * @see <a href="https://github.com/apache/logging-log4j2/issues/2946#issuecomment-2382935426">#2946</a>
+     */
+    @Test
+    void testAutoCloseableThreadContextPutAll() {
+        try (final CloseableThreadContext.Instance ctc1 = CloseableThreadContext.put("outer", "one")) {
+            try (final CloseableThreadContext.Instance ctc2 = CloseableThreadContext.put("outer", "two")) {
+                assertEquals("two", ThreadContext.get("outer"));
+
+                try (final CloseableThreadContext.Instance ctc3 = CloseableThreadContext.put("inner", "one")) {
+                    assertEquals("one", ThreadContext.get("inner"));
+
+                    ThreadContext.put(
+                            "not-in-closeable", "true"); // Remove this line, and closing context behaves as expected
+                    ThreadContext.putAll(Collections.singletonMap("inner", "two")); // But this is not a problem
+                    assertEquals("two", ThreadContext.get("inner"));
+                    assertEquals("two", ThreadContext.get("outer"));
+                }
+
+                assertEquals("two", ThreadContext.get("outer"));
+                assertNull(ThreadContext.get("inner")); // This is where the test fails
+            }
+
+            assertEquals("one", ThreadContext.get("outer"));
+            assertNull(ThreadContext.get("inner"));
+        }
+        assertEquals("true", ThreadContext.get("not-in-closeable"));
+
+        assertNull(ThreadContext.get("inner"));
+        assertNull(ThreadContext.get("outer"));
     }
 }
